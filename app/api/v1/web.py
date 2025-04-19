@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request, Depends, Form, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+
 from starlette import status
 
 from lidar.app.crud.user import get_user_by_name, get_user_by_id
@@ -12,7 +13,6 @@ from lidar.app.core.config import settings
 
 router = APIRouter()
 
-# Путь к папке с шаблонами: lidar/lidar/templates
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
@@ -47,7 +47,6 @@ async def login_web(
         url=f"/{user.user_id}",
         status_code=status.HTTP_303_SEE_OTHER
     )
-    # Устанавливаем cookie с точным именем 'Authorization'
     response.set_cookie(
         key="Authorization",
         value=f"Bearer {token}",
@@ -63,12 +62,11 @@ async def login_web(
 async def home(
     request: Request,
     user_id: int,
-    # Читаем cookie 'Authorization' точно по имени
+
     authorization: str = Cookie(None, alias="Authorization"),
     db=Depends(get_db),
     templates: Jinja2Templates = Depends(get_templates)
 ):
-    # Если нет или не Bearer -> на /login
     if not authorization or not authorization.startswith("Bearer "):
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -78,7 +76,6 @@ async def home(
     except Exception:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    # Проверка соответствия sub
     if "sub" not in payload or int(payload["sub"]) != user_id:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
