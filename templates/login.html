@@ -1,21 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Авторизация</title>
+  <link rel="stylesheet" href="/static/css/login.css">
 </head>
 <body>
-    <h1>Авторизация</h1>
-    {% if error %}
-        <p style="color: red;">{{ error }}</p>
-    {% endif %}
-    <form method="post" action="/login">
-        <label for="username">Username:</label><br>
-        <input type="text" id="username" name="username" required><br><br>
-        <label for="password">Password:</label><br>
-        <input type="password" id="password" name="password" required><br><br>
+  <div class="logo"></div>
+  <div class="lidar-title">Lidar</div>
+
+  <div class="login-frame">
+    <!-- шапка фрейма: две половины -->
+    <div class="login-header">
+      <div class="tab active">Войти</div>
+      <div class="tab" onclick="window.location.href='/registration'">Регистрация</div>
+    </div>
+
+    <!-- тело формы -->
+    <div class="login-body">
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% endif %}
+      <form method="post" action="/login">
+        <input type="text" id="username" name="username" placeholder="Логин" required>
+        <input type="password" id="password" name="password" placeholder="Пароль" required>
         <button type="submit">Войти</button>
-    </form>
+      </form>
+    </div>
+  </div>
 </body>
 </html>

@@ -23,6 +23,10 @@ def get_templates():
 async def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
 
+@router.get("/registration", response_class=HTMLResponse)
+async def registration_form(request: Request):
+    return templates.TemplateResponse("registration.html", {"request": request})
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(
     request: Request,
@@ -93,3 +97,5 @@ async def home(
         "main.html",
         {"request": request, "username": user.user_name}
     )
+
+
