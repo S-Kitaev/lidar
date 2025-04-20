@@ -9,7 +9,7 @@ from lidar.app.db.session import engine
 # Авто‑создаём таблицы (только для разработки)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="IoT Platform API")
+app = FastAPI(title="Lidar API")
 
 # CORS: разрешаем обращения с локальных портов
 app.add_middleware(

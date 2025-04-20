@@ -19,11 +19,16 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 def get_templates():
     return templates
 
+@router.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(
     request: Request,
     templates: Jinja2Templates = Depends(get_templates)
-):
+    ):
+
     return templates.TemplateResponse("login.html", {"request": request, "error": None})
 
 @router.post("/login", response_class=HTMLResponse)
@@ -33,7 +38,8 @@ async def login_web(
     password: str = Form(...),
     db=Depends(get_db),
     templates: Jinja2Templates = Depends(get_templates)
-):
+    ):
+
     user = get_user_by_name(db, username)
     if not user or not verify_password(password, user.user_password):
         return templates.TemplateResponse(
