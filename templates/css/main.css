@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Bruno+Ace&family=Roboto:wght@400;500&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  background: #FFFFFF;
+}
+.main-header {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100px;
+  background: #006D75;
+  display: flex;
+  align-items: center;
+  padding: 0 50px;
+  box-sizing: border-box;
+  z-index: 10;
+}
+.logo-white {
+  width: 61px; height: 54px;
+  background: url('/static/images/logo.png') no-repeat center center;
+  background-size: contain;
+  border-radius: 4px;
+  margin-right: 50px;
+}
+.main-nav {
+  display: flex;
+  gap: 40px;
+  flex: 1;
+}
+.nav-item {
+  color: #FFFFFF;
+  text-decoration: none;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 32px;
+  display: flex;
+  align-items: flex-end;
+}
+.nav-item.active {
+  color: #87E8DE;
+  border-bottom: 2px solid #87E8DE;
+}
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-name {
+  color: #FFFFFF;
+  font-size: 24px;
+  font-weight: 500;
+}
+.user-icon {
+  width: 36px; height: 36px;
+  background: url('/static/images/logo.png') no-repeat center center;
+  background-size: contain;
+  border-radius: 50%;
+}
+.main-content {
+  margin-top: 140px; /* чтобы не залезать под header */
+  text-align: center;
+  padding: 20px;
+}
+.main-content h1 {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
