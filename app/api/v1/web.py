@@ -147,7 +147,7 @@ async def home(
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     return templates.TemplateResponse(
-        "main.html",
+        "home_main.html",
         {"request": request, "username": user.user_name}
     )
 

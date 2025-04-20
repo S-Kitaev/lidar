@@ -62,7 +62,8 @@ body {
     color: #FFFFFF;
 }
 .login-header .tab.active {
-    color: #87E8DE;
+    color: #87E8DE
+    border-bottom: 2px solid #87E8DE;
 }
 
 /* Тело формы */

@@ -1,57 +1,22 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Главная</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-
-        header {
-            background-color: #1a202c;
-            color: white;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .title {
-            font-size: 1.5em;
-        }
-
-        .login-button {
-            background-color: #4a90e2;
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 1em;
-        }
-
-        .login-button:hover {
-            background-color: #357ab8;
-        }
-
-        main {
-            padding: 20px;
-            text-align: center;
-            font-size: 2em;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/main.css" />
 </head>
 <body>
-    <header>
-        <div class="title">Домашняя страница Лидар</div>
+    <header class="main-header">
+        <div class="logo-white"></div>
+        <nav class="main-nav">
+            <a href="/" class="nav-item active">Главная</a>
+        </nav>
+
         <a href="/login" class="login-button">Войти</a>
     </header>
-
-    <main>
-        Добро пожаловать на домашнюю страницу!
+    <main class="main-content">
+        <h1>Добро пожаловать на домашнюю страницу!</h1>
     </main>
 </body>
 </html>
