@@ -1,9 +1,10 @@
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.exception_handlers import http_exception_handler as default_http_handler
 from lidar.app.api.v1.web import router as web_router
 from lidar.app.db.base import Base
 from lidar.app.db.session import engine
@@ -41,5 +42,13 @@ app.mount(
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse(str(BASE_DIR / "templates/images/logo.png"))
+
+@app.exception_handler(HTTPException)
+async def auth_http_exception_handler(request: Request, exc: HTTPException):
+    # если это наша 401-ка, редиректим на /login
+    if exc.status_code == 401:
+        return RedirectResponse(url="/login", status_code=303)
+    # иначе стандартный обработчик
+    return await default_http_handler(request, exc)
 
 app.include_router(web_router)

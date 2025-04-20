@@ -1,9 +1,10 @@
-from pathlib import Path
+import pathlib
 
 from pydantic import ValidationError
 from sqlalchemy.exc import DataError
 
-from fastapi import APIRouter, Request, Depends, Form, Cookie
+from fastapi import Path as PathParam
+from fastapi import APIRouter, Request, Depends, Form, Cookie, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -17,11 +18,27 @@ from lidar.app.core.config import settings
 
 router = APIRouter()
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+BASE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 def get_templates():
     return templates
+
+def require_authenticated_user(
+    user_id: int = PathParam(..., ge=1),
+    authorization: str = Cookie(None, alias="Authorization"),
+    db=Depends(get_db)
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401)
+    token = authorization.split(" ", 1)[1]
+    payload = decode_access_token(token)
+    if "sub" not in payload or int(payload["sub"]) != user_id:
+        raise HTTPException(status_code=401)
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404)
+    return user
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -121,11 +138,46 @@ async def login_web(
     )
     return response
 
+@router.get("/{user_id}/create", response_class=HTMLResponse)
+async def create_cloud(
+    request: Request,
+    user=Depends(require_authenticated_user),
+    templates: Jinja2Templates = Depends(get_templates)
+):
+    return templates.TemplateResponse("create.html", {
+        "request": request,
+        "username": user.user_name,
+        "user_id": user.user_id
+    })
+
+@router.get("/{user_id}/check", response_class=HTMLResponse)
+async def check_cloud(
+    request: Request,
+    user=Depends(require_authenticated_user),
+    templates: Jinja2Templates = Depends(get_templates)
+):
+    return templates.TemplateResponse("check.html", {
+        "request": request,
+        "username": user.user_name,
+        "user_id": user.user_id
+    })
+
+@router.get("/{user_id}/connect", response_class=HTMLResponse)
+async def connect_cxd(
+    request: Request,
+    user=Depends(require_authenticated_user),
+    templates: Jinja2Templates = Depends(get_templates)
+):
+    return templates.TemplateResponse("connect.html", {
+        "request": request,
+        "username": user.user_name,
+        "user_id": user.user_id
+    })
+
 @router.get("/{user_id}", response_class=HTMLResponse)
 async def home(
     request: Request,
     user_id: int,
-
     authorization: str = Cookie(None, alias="Authorization"),
     db=Depends(get_db),
     templates: Jinja2Templates = Depends(get_templates)
@@ -148,7 +200,11 @@ async def home(
 
     return templates.TemplateResponse(
         "home_main.html",
-        {"request": request, "username": user.user_name}
+        {
+            "request": request,
+            "username": user.user_name,
+            "user_id": user.user_id
+        }
     )
 
 

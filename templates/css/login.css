@@ -49,6 +49,7 @@ body {
     background: #006D75;
     box-sizing: border-box;
 }
+/*
 .login-header .tab {
     flex: 1;
     display: flex;
@@ -62,7 +63,28 @@ body {
     color: #FFFFFF;
 }
 .login-header .tab.active {
-    color: #87E8DE
+    color: #87E8DE;
+    border-bottom: 2px solid #87E8DE;
+} */
+
+.login-header .tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500; /* Исправлено с 50 на 500 (вероятно опечатка) */
+    font-size: 16px;
+    line-height: 32px; /* Добавлено для выравнивания как в nav-item */
+    cursor: pointer;
+    color: #FFFFFF;
+    box-sizing: border-box; /* Важно для границ */
+    padding-bottom: 1px; /* Отступ для подчеркивания */
+    position: relative;
+}
+
+.login-header .tab.active {
+    color: #87E8DE;
     border-bottom: 2px solid #87E8DE;
 }
 
