@@ -18,7 +18,7 @@ body {
 }
 .logo-white {
   width: 61px; height: 54px;
-  background: url('/static/images/logo.png') no-repeat center center;
+  background: url('/static/images/logo_white.png') no-repeat center center;
   background-size: contain;
   border-radius: 4px;
   margin-right: 50px;
