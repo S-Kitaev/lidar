@@ -5,16 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.exception_handlers import http_exception_handler as default_http_handler
-from lidar.app.api.v1.web import router as web_router
-from lidar.app.db.base import Base
-from lidar.app.db.session import engine
+from app.api.v1.web  import router as web_router
+from app.db.base import Base
+from app.db.session import engine
 
 # Авто‑создаём таблицы (только для разработки)
 Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(title="Lidar API")
-app.mount("/static", StaticFiles(directory="lidar/templates"), name="static")
+app.mount("/static", StaticFiles(directory="templates"), name="static")
 
 app.add_middleware(
     CORSMiddleware,

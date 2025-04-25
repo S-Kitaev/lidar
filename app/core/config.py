@@ -1,7 +1,9 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent  # D:/lidar
+# Path(__file__) = /app/lidar/app/core/config.py
+# .parent.parent.parent = /app/lidar
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -10,8 +12,8 @@ class Settings(BaseSettings):
     )
 
     DATABASE_URL: str
-    JWT_PRIVATE_KEY_PATH: str = "certs/jwt-private.pem"
-    JWT_PUBLIC_KEY_PATH: str = "certs/jwt-public.pem"
+    JWT_PRIVATE_KEY_PATH: str = str(BASE_DIR / "certs" / "jwt-private.pem")
+    JWT_PUBLIC_KEY_PATH:  str = str(BASE_DIR / "certs" / "jwt-public.pem")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
 settings = Settings()

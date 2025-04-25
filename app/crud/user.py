@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from lidar.app.models.user import User
-from lidar.app.schemas.user import UserCreate
-from lidar.app.core.security import hash_password
+from app.models.user import User
+from app.schemas.user import UserCreate
+from app.core.security import hash_password
 
 def get_user_by_name(db: Session, user_name: str):
     return db.query(User).filter(User.user_name == user_name).first()

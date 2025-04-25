@@ -2,7 +2,7 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status
-from lidar.app.core.config import settings
+from app.core.config import settings
 from jwt import PyJWTError, ExpiredSignatureError
 
 # Читаем ключи единожды

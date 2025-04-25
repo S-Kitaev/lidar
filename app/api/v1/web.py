@@ -10,16 +10,18 @@ from fastapi.templating import Jinja2Templates
 
 from starlette import status
 
-from lidar.app.crud.user import get_user_by_name, get_user_by_id, get_user_by_email, create_user
-from lidar.app.schemas.user import UserCreate
-from lidar.app.core.security import verify_password, create_access_token, decode_access_token
-from lidar.app.db.session import get_db
-from lidar.app.core.config import settings
+from app.crud.user import get_user_by_name, get_user_by_id, get_user_by_email, create_user
+from app.schemas.user import UserCreate
+from app.core.security import verify_password, create_access_token, decode_access_token
+from app.db.session import get_db
+from app.core.config import settings
 
 router = APIRouter()
 
-BASE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[3]
+TEMPLATES_DIR = PROJECT_ROOT / "templates"
+
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 def get_templates():
     return templates
