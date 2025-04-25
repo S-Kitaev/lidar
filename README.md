@@ -15,11 +15,14 @@ HES LiDAR project
    docker compose up --build
    
 4. Сам API-сервер на порту 8000 внутри контейнера, проброшенном на порт 8001 хоста. Перейдите в браузере по ссылке:
-   ```http://localhost:8001/```
+   ```bash
+   http://localhost:8001/
 
 5. Для локального использования без Docker:
    - Создайте виртуальное окружение.
    - Установите зависимости из requirements.txt. 
    - Настройте .env с параметром DATABASE_URL. 
    - Запустите PostgreSQL (например, через Docker). 
-   - Запустите сервер командой: ```uvicorn main:app --reload```
+   - Запустите сервер командой: 
+   ```bash 
+   uvicorn main:app --reload
