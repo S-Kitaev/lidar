@@ -1,16 +1,16 @@
 import pathlib
 
 from pydantic import ValidationError
-from sqlalchemy.exc import DataError
-
-from fastapi import Path as PathParam
-from fastapi import APIRouter, Request, Depends, Form, Cookie, HTTPException
+from fastapi import (
+    APIRouter, Request, Depends, Form, Cookie, HTTPException, Header, Path
+)
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-
 from starlette import status
 
-from app.crud.user import get_user_by_name, get_user_by_id, get_user_by_email, create_user
+from app.crud.user import (
+    get_user_by_name, get_user_by_id, get_user_by_email, create_user
+)
 from app.schemas.user import UserCreate
 from app.core.security import verify_password, create_access_token, decode_access_token
 from app.db.session import get_db
@@ -18,37 +18,54 @@ from app.core.config import settings
 
 router = APIRouter()
 
-PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[3]
-TEMPLATES_DIR = PROJECT_ROOT / "templates"
+# где лежат ваши html-шаблоны
+TEMPLATES_DIR = pathlib.Path(__file__).resolve().parents[3] / "templates"
+templates = Jinja2Templates(str(TEMPLATES_DIR))
 
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-def get_templates():
-    return templates
+def get_token(
+    authorization_header: str | None = Header(None, alias="Authorization"),
+    authorization_cookie: str | None = Cookie(None, alias="Authorization"),
+) -> str:
+    """Вытащить Bearer-токен из заголовка или из куки."""
+    raw = authorization_header or authorization_cookie
+    if not raw or not raw.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    return raw.split(" ", 1)[1]
+
 
 def require_authenticated_user(
-    user_id: int = PathParam(..., ge=1),
-    authorization: str = Cookie(None, alias="Authorization"),
-    db=Depends(get_db)
+    token: str = Depends(get_token),
+    user_id: int = Path(..., ge=1),
+    db=Depends(get_db),
 ):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401)
-    token = authorization.split(" ", 1)[1]
-    payload = decode_access_token(token)
-    if "sub" not in payload or int(payload["sub"]) != user_id:
-        raise HTTPException(status_code=401)
+    """
+    Зависимость для защищённых эндпоинтов.
+    Проверяет JWT, сравнивает sub с user_id и загружает пользователя из БД.
+    """
+    try:
+        payload = decode_access_token(token)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+    if int(payload.get("sub", 0)) != user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
     user = get_user_by_id(db, user_id)
     if not user:
-        raise HTTPException(status_code=404)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return user
 
+
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request):
+async def home_anon(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
+
 
 @router.get("/registration", response_class=HTMLResponse)
 async def registration_form(request: Request):
     return templates.TemplateResponse("registration.html", {"request": request})
+
 
 @router.post("/registration", response_class=HTMLResponse)
 async def registration_web(
@@ -58,54 +75,38 @@ async def registration_web(
     password: str = Form(...),
     password2: str = Form(...),
     db=Depends(get_db),
-    templates: Jinja2Templates = Depends(get_templates)
 ):
-    # 1) Проверка, что нет уже пользователя с таким логином или email
+    # проверяем дубликаты
     if get_user_by_name(db, username):
-        return templates.TemplateResponse("registration.html", {
-            "request": request, "error": "Имя пользователя уже занято"
-        })
-    if get_user_by_email(db, email):
-        return templates.TemplateResponse("registration.html", {
-            "request": request, "error": "Email уже зарегистрирован"
-        })
-
-    if len(username) > 20:
-        return templates.TemplateResponse("registration.html", {
-            "request": request, "error": "Логин не более 20 символов"})
-    if len(email) > 50:
-        return templates.TemplateResponse("registration.html", {"request": request, "error": "Email не более 50 символов"})
-
-    # 2) Проверяем совпадение паролей
-    if password != password2:
-        return templates.TemplateResponse("registration.html", {
-            "request": request, "error": "Пароли не совпадают"
-        })
-    # 3) Создаём пользователя
-    try:
-        user_in = UserCreate(user_name=username, password=password, email=email)
-    except ValidationError as ve:
-        # если ошибка в поле email — покажем понятное сообщение
-        for err in ve.errors():
-            if err["loc"] == ("email",):
-                msg = "Неверный формат email"
-                break
+        error = "Имя пользователя уже занято"
+    elif get_user_by_email(db, email):
+        error = "Email уже зарегистрирован"
+    elif len(username) > 20:
+        error = "Логин не более 20 символов"
+    elif len(email) > 50:
+        error = "Email не более 50 символов"
+    elif password != password2:
+        error = "Пароли не совпадают"
+    else:
+        # валидируем email и хешируем пароль
+        try:
+            user_in = UserCreate(user_name=username, password=password, email=email)
+        except ValidationError as ve:
+            errs = ve.errors()
+            error = "Неверный формат email" if errs and errs[0]["loc"] == ("email",) else "Некорректные данные"
         else:
-            msg = "Некорректные данные"
-        return templates.TemplateResponse("registration.html", {
-            "request": request, "error": msg
-        })
-    create_user(db, user_in)
-    # 4) Перенаправляем на страницу логина
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+            create_user(db, user_in)
+            return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    return templates.TemplateResponse(
+        "registration.html", {"request": request, "error": error}
+    )
+
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_form(
-    request: Request,
-    templates: Jinja2Templates = Depends(get_templates)
-    ):
-
+async def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": None})
+
 
 @router.post("/login", response_class=HTMLResponse)
 async def login_web(
@@ -113,100 +114,53 @@ async def login_web(
     username: str = Form(...),
     password: str = Form(...),
     db=Depends(get_db),
-    templates: Jinja2Templates = Depends(get_templates)
-    ):
-
+):
     user = get_user_by_name(db, username)
     if not user or not verify_password(password, user.user_password):
         return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "error": "Неправильные учётные данные"}
+            "login.html", {"request": request, "error": "Неправильные учётные данные"}
         )
 
     token = create_access_token({"sub": str(user.user_id)})
-
-    response = RedirectResponse(
-        url=f"/{user.user_id}",
-        status_code=status.HTTP_303_SEE_OTHER
-    )
-    response.set_cookie(
-        key="Authorization",
-        value=f"Bearer {token}",
-        httponly=True,
-        secure=False,            # для HTTP на localhost
-        samesite="lax",
+    resp = RedirectResponse(f"/{user.user_id}", status_code=status.HTTP_303_SEE_OTHER)
+    resp.set_cookie(
+        "Authorization", f"Bearer {token}",
+        httponly=True, secure=False, samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/"
     )
-    return response
+    return resp
 
-@router.get("/{user_id}/create", response_class=HTMLResponse)
-async def create_cloud(
-    request: Request,
-    user=Depends(require_authenticated_user),
-    templates: Jinja2Templates = Depends(get_templates)
-):
-    return templates.TemplateResponse("create.html", {
-        "request": request,
-        "username": user.user_name,
-        "user_id": user.user_id
-    })
-
-@router.get("/{user_id}/check", response_class=HTMLResponse)
-async def check_cloud(
-    request: Request,
-    user=Depends(require_authenticated_user),
-    templates: Jinja2Templates = Depends(get_templates)
-):
-    return templates.TemplateResponse("check.html", {
-        "request": request,
-        "username": user.user_name,
-        "user_id": user.user_id
-    })
-
-@router.get("/{user_id}/connect", response_class=HTMLResponse)
-async def connect_cxd(
-    request: Request,
-    user=Depends(require_authenticated_user),
-    templates: Jinja2Templates = Depends(get_templates)
-):
-    return templates.TemplateResponse("connect.html", {
-        "request": request,
-        "username": user.user_name,
-        "user_id": user.user_id
-    })
 
 @router.get("/{user_id}", response_class=HTMLResponse)
-async def home(
-    request: Request,
-    user_id: int,
-    authorization: str = Cookie(None, alias="Authorization"),
-    db=Depends(get_db),
-    templates: Jinja2Templates = Depends(get_templates)
-):
-    if not authorization or not authorization.startswith("Bearer "):
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    token = authorization.split(" ", 1)[1]
-    try:
-        payload = decode_access_token(token)
-    except Exception:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    if "sub" not in payload or int(payload["sub"]) != user_id:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    user = get_user_by_id(db, user_id)
-    if not user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
+async def home_user(request: Request, user=Depends(require_authenticated_user)):
     return templates.TemplateResponse(
         "home_main.html",
-        {
-            "request": request,
-            "username": user.user_name,
-            "user_id": user.user_id
-        }
+        {"request": request, "username": user.user_name, "user_id": user.user_id}
+    )
+
+
+@router.get("/{user_id}/create", response_class=HTMLResponse)
+async def create_cloud(request: Request, user=Depends(require_authenticated_user)):
+    return templates.TemplateResponse(
+        "create.html",
+        {"request": request, "username": user.user_name, "user_id": user.user_id}
+    )
+
+
+@router.get("/{user_id}/check", response_class=HTMLResponse)
+async def check_cloud(request: Request, user=Depends(require_authenticated_user)):
+    return templates.TemplateResponse(
+        "check.html",
+        {"request": request, "username": user.user_name, "user_id": user.user_id}
+    )
+
+
+@router.get("/{user_id}/connect", response_class=HTMLResponse)
+async def connect_cxd(request: Request, user=Depends(require_authenticated_user)):
+    return templates.TemplateResponse(
+        "connect.html",
+        {"request": request, "username": user.user_name, "user_id": user.user_id}
     )
 
 

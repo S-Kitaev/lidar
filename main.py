@@ -1,21 +1,52 @@
 from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.exception_handlers import http_exception_handler as default_http_handler
-from app.api.v1.web  import router as web_router
+from fastapi.openapi.utils import get_openapi
+
+from app.api.v1.web import router as web_router
 from app.db.base import Base
 from app.db.session import engine
 
-# Авто‑создаём таблицы (только для разработки)
+# Авто-создаём все таблицы (для разработки)
 Base.metadata.create_all(bind=engine)
 
-
 app = FastAPI(title="Lidar API")
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version="1.0.0",
+        routes=app.routes,
+    )
+    # Определяем схему bearerAuth
+    schema.setdefault("components", {}) \
+          .setdefault("securitySchemes", {})["bearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+    }
+    # Добавляем её ко всем операциям по умолчанию
+    for path_item in schema["paths"].values():
+        for operation in path_item.values():
+            operation.setdefault("security", []).append({"bearerAuth": []})
+
+    app.openapi_schema = schema
+    return schema
+
+app.openapi = custom_openapi
+
+
+# Статика для CSS/JS/картинок
 app.mount("/static", StaticFiles(directory="templates"), name="static")
 
+# CORS — разрешаем фронту на 8000/8001
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -29,26 +60,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Шаблоны
+# favicon
 BASE_DIR = Path(__file__).resolve().parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
-app.mount(
-    "/static",
-    StaticFiles(directory=str(BASE_DIR / "templates")),
-    name="static"
-)
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    return FileResponse(str(BASE_DIR / "templates/images/logo.png"))
+    return FileResponse(BASE_DIR / "templates" / "images" / "logo.png")
 
+
+# Перехватываем 401 и редиректим на /login
 @app.exception_handler(HTTPException)
 async def auth_http_exception_handler(request: Request, exc: HTTPException):
-    # если это наша 401-ка, редиректим на /login
     if exc.status_code == 401:
-        return RedirectResponse(url="/login", status_code=303)
-    # иначе стандартный обработчик
+        return RedirectResponse("/login", status_code=303)
     return await default_http_handler(request, exc)
 
+
+# Все ваши веб-роуты в одном месте
 app.include_router(web_router)
