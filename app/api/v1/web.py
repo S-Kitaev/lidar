@@ -11,10 +11,16 @@ from starlette import status
 from app.crud.user import (
     get_user_by_name, get_user_by_id, get_user_by_email, create_user
 )
+from app.crud.experiment import insert_experiment
+from app.crud.measurement import insert_measurements
 from app.schemas.user import UserCreate
+from app.schemas.experiment import ExperimentCreate
+from app.schemas.measurement import MeasurementCreate, MeasurementData
 from app.core.security import verify_password, create_access_token, decode_access_token
 from app.db.session import get_db
 from app.core.config import settings
+from sqlalchemy.exc import SQLAlchemyError
+import json
 
 router = APIRouter()
 
@@ -162,5 +168,39 @@ async def connect_cxd(request: Request, user=Depends(require_authenticated_user)
         "connect.html",
         {"request": request, "username": user.user_name, "user_id": user.user_id}
     )
+
+
+@router.post("/{user_id}/data_to_db", response_class=HTMLResponse)
+async def insert_data(
+        measurements: str = Form(...),
+        date: str = Form(...),
+        room_description: str = Form(...),
+        address: str = Form(...),
+        object_description: str = Form(...),
+        db=Depends(get_db),
+):
+    try:
+
+        experiment = ExperimentCreate(exp_dt=date,
+                                      room_description=room_description,
+                                      address=address,
+                                      object_description=object_description)
+
+        exp_id = insert_experiment(db=db, experiment=experiment)
+        measurements_dict = json.loads(measurements)
+        measurement_create = MeasurementCreate(
+            measurements=[MeasurementData(**item) for item in measurements_dict["measurements"]]
+        )
+        insert_measurements(db=db, measurement_data=measurement_create, experiment_id=exp_id)
+        db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+        return {"status": "error", "message": f"Database error: {str(e)}"}
+    except ValueError as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        db.close()
+
+
 
 
