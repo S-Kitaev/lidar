@@ -170,7 +170,7 @@ async def connect_cxd(request: Request, user=Depends(require_authenticated_user)
     )
 
 
-@router.post("/{user_id}/data_to_db", response_class=HTMLResponse)
+@router.post("/{user_id}/create/save", response_class=HTMLResponse)
 async def insert_data(
         measurements: str = Form(...),
         date: str = Form(...),
