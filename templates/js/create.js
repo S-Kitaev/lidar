@@ -243,44 +243,93 @@ function handleParseError(errorMessage) {
     }
 
     // Обработка сохранения данных эксперимента
-    saveBtn.addEventListener('click', () => {
-        // Собираем данные из формы
-        experimentData.date = dateInput.value;
-        experimentData.room = document.getElementById('room').value;
-        experimentData.address = document.getElementById('address').value;
-        experimentData.object = document.getElementById('object').value;
+    saveBtn.addEventListener('click', async () => {
+    // 1) Собираем данные
+    experimentData.date = dateInput.value;
+    experimentData.room = document.getElementById('room').value.trim();
+    experimentData.address = document.getElementById('address').value.trim();
+    experimentData.object = document.getElementById('object').value.trim();
 
-        // Проверяем заполнение обязательных полей
-        if (!experimentData.date ||
-            !experimentData.room ||
-            !experimentData.address ||
-            !experimentData.object ||
-            experimentData.measurements.length === 0) {
-            alert('Пожалуйста, заполните все поля и загрузите файл с данными');
-            return;
+    if (
+        !experimentData.date ||
+        !experimentData.room ||
+        !experimentData.address ||
+        !experimentData.object ||
+        experimentData.measurements.length === 0
+    ) {
+        alert('Пожалуйста, заполните все поля и загрузите файл с данными');
+        return;
+    }
+
+    // 3) Формируем FormData
+    const formData = new FormData();
+    formData.append('date', experimentData.date);
+    formData.append('room_description', experimentData.room);
+    formData.append('address', experimentData.address);
+    formData.append('object_description', experimentData.object);
+    const jsonBlob = new Blob(
+        [ JSON.stringify({ measurements: experimentData.measurements }) ],
+        { type: 'application/json' }
+        );
+    formData.append('measurements_file', jsonBlob, 'measurements.json');
+
+    const userId = getUserIdFromUrl();
+    const endpoint = `/${userId}/create/save`;
+
+    saveBtn.textContent = 'Сохранение...';
+    saveBtn.disabled = true;
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+          const raw = await response.text();
+          let errMsg = raw;
+          try { errMsg = JSON.parse(raw).detail || raw; } catch {}
+          throw new Error(errMsg);
         }
 
-        // Показываем анимацию сохранения
-        saveBtn.textContent = 'Сохранение...';
-        saveBtn.disabled = true;
+        // здесь статус 2xx
+        const data = await response.json();
 
-        // Имитация сохранения в базу данных
+        successMessage.style.display = 'block';
+        successMessage.textContent = 'Эксперимент успешно сохранён!';
+        saveBtn.textContent = 'Сохранено';
+
         setTimeout(() => {
-            // В реальном приложении здесь будет отправка данных на сервер
-            console.log('Сохранение эксперимента:', experimentData);
+            successMessage.style.display = 'none';
+            saveBtn.textContent = 'Сохранить эксперимент';
+            saveBtn.disabled = false;
+        }, 3000);
 
-            // Показываем сообщение об успехе
-            successMessage.style.display = 'block';
-            saveBtn.textContent = 'Эксперимент сохранен';
+    } catch (error) {
+        console.error('Ошибка при сохранении (fetch):', error);
+        successMessage.style.display = 'block';
+        successMessage.style.background = '#fff1f0';
+        successMessage.style.borderColor = '#ffa39e';
+        successMessage.style.color = '#cf1322';
+        successMessage.textContent = `Ошибка: ${error.message}`;
 
-            // Через 3 секунды сбрасываем
-            setTimeout(() => {
-                successMessage.style.display = 'none';
-                saveBtn.textContent = 'Сохранить эксперимент';
-                saveBtn.disabled = false;
-            }, 3000);
-        }, 1500);
+        saveBtn.textContent = 'Ошибка сохранения';
+        setTimeout(() => {
+            successMessage.style.display = 'none';
+            // сбрасываем стили
+            successMessage.style = '';
+            saveBtn.textContent = 'Сохранить эксперимент';
+            saveBtn.disabled = false;
+            }, 5000);
+        }
     });
+
+
+    // Функция для извлечения user_id из URL
+    function getUserIdFromUrl() {
+        const pathSegments = window.location.pathname.split('/').filter(segment => segment);
+        return pathSegments.length > 0 ? pathSegments[0] : 'unknown';
+    }
 
     // Инициализация страницы
     setCurrentDateTime();

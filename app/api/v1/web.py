@@ -2,7 +2,7 @@ import pathlib
 
 from pydantic import ValidationError
 from fastapi import (
-    APIRouter, Request, Depends, Form, Cookie, HTTPException, Header, Path
+    APIRouter, Request, Depends, Form, Cookie, HTTPException, Header, Path, UploadFile, File
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -170,29 +170,30 @@ async def connect_cxd(request: Request, user=Depends(require_authenticated_user)
     )
 
 
-@router.post("/{user_id}/create/save", response_class=HTMLResponse)
+@router.post("/{user_id}/create/save")
 async def insert_data(
-        measurements: str = Form(...),
         date: str = Form(...),
         room_description: str = Form(...),
         address: str = Form(...),
         object_description: str = Form(...),
+        measurements_file: UploadFile = File(...),
         db=Depends(get_db),
 ):
     try:
-
+        content = await measurements_file.read()
+        measurements_dict = json.loads(content)
         experiment = ExperimentCreate(exp_dt=date,
                                       room_description=room_description,
                                       address=address,
                                       object_description=object_description)
 
         exp_id = insert_experiment(db=db, experiment=experiment)
-        measurements_dict = json.loads(measurements)
         measurement_create = MeasurementCreate(
             measurements=[MeasurementData(**item) for item in measurements_dict["measurements"]]
         )
         insert_measurements(db=db, measurement_data=measurement_create, experiment_id=exp_id)
         db.commit()
+        return {"status": "success", "message": "Data inserted"}
     except SQLAlchemyError as e:
         db.rollback()
         return {"status": "error", "message": f"Database error: {str(e)}"}
