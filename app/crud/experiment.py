@@ -15,3 +15,13 @@ def insert_experiment(db: Session, experiment: ExperimentCreate):
         ).returning(Experiment.id)
     )
     return result.scalar()
+
+
+def get_all_experiments(db: Session):
+    """Получить все эксперименты"""
+    return db.query(Experiment).all()
+
+
+def get_experiment_by_id(db: Session, experiment_id: int):
+    """Получить эксперимент по ID"""
+    return db.query(Experiment).filter(Experiment.id == experiment_id).first()
